@@ -84,46 +84,28 @@ angular.module('ngDfp', [])
      */
     this._initialize = function () {
       var self = this;
-      // when the GPT JavaScript is loaded, it looks through the array and executes all the functions in order
-      googletag.cmd.push(function() {
-        angular.forEach(slots, function (slot, id) {
-          definedSlots[id] = googletag.defineSlot.apply(null, slot).addService(googletag.pubads());
-          if(sizeMapping[id]){
-            definedSlots[id].defineSizeMapping(sizeMapping[id]);
-          }
 
-          /**
-           If sent, set the slot specific targeting
-           */
-	  var slotTargeting = slot.getSlotTargeting();
-          if(slotTargeting){
-            angular.forEach(slotTargeting, function (value, key) {
-              definedSlots[id].setTargeting(value.id, value.value);
-            });
-          }
-        });
-
-	      /**
-         Set the page targeting key->values
-         */
-        angular.forEach(pageTargeting, function (value, key) {
-          googletag.pubads().setTargeting(key, value);
-        });
-
-        /**
-         If requested set to true the collapseEmptyDivs
-         */
-        if (collapseEmptyDivs) {
-          googletag.pubads().collapseEmptyDivs();
-        }
-
-        if (enableSingleRequest) {
-          googletag.pubads().enableSingleRequest();
-        }
-        googletag.enableServices();
-
-        googletag.pubads().addEventListener('slotRenderEnded', self._slotRenderEnded);
+      /**
+       Set the page targeting key->values
+       */
+      angular.forEach(pageTargeting, function (value, key) {
+        googletag.pubads().setTargeting(key, value);
       });
+
+      /**
+       If requested set to true the collapseEmptyDivs
+       */
+      if (collapseEmptyDivs) {
+        googletag.pubads().collapseEmptyDivs();
+      }
+
+      if (enableSingleRequest) {
+        googletag.pubads().enableSingleRequest();
+      }
+      googletag.enableServices();
+
+      googletag.pubads().addEventListener('slotRenderEnded', self._slotRenderEnded);
+
     };
 
     this._slotRenderEnded = function (event) {
@@ -244,7 +226,6 @@ angular.module('ngDfp', [])
       var deferred = $q.defer();
 
       self._createTag(function () {
-        self._initialize();
 
         if (self._refreshInterval() !== null) {
           $interval(function () {
@@ -287,9 +268,26 @@ angular.module('ngDfp', [])
 
             if (angular.isUndefined(slot)) {
               throw 'Slot ' + id + ' has not been defined. Define it using DoubleClickProvider.defineSlot().';
+            } else {
+              googletag.cmd.push(function () {
+                if (slot[2] == undefined) {
+                  definedSlots[id] = googletag.defineOutOfPageSlot.apply(null, slot).addService(googletag.pubads());
+                } else {
+                  definedSlots[id] = googletag.defineSlot.apply(null, slot).addService(googletag.pubads());
+                }
+                if (sizeMapping[id]) {
+                  definedSlots[id].defineSizeMapping(sizeMapping[id]);
+                }
+              });
             }
 
             return slots[id];
+          });
+        },
+
+        fireAd: function (id) {
+          googletag.cmd.push(function () {
+            self._initialize();
           });
         },
 
@@ -377,9 +375,12 @@ angular.module('ngDfp', [])
           var timeoutPromise = null;
 
           DoubleClick.getSlot(id).then(function (slot) {
+            DoubleClick.fireAd(id);
             var size = slot.getSize();
 
-            element.css('width', size[0]).css('height', size[1]);
+            if (size) {
+              element.css('width', size[0]).css('height', size[1])
+            }
             $timeout(function () {
               DoubleClick.runAd(id);
             });
