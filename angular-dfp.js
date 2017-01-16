@@ -356,7 +356,7 @@ angular.module('ngDfp', [])
     };
   })
 
-  .directive('ngDfpAd', ['$timeout', '$parse', '$interval', 'DoubleClick', function ($timeout, $parse, $interval, DoubleClick) {
+  .directive('ngDfpAd', ['$timeout', '$parse', '$interval', '$document', 'DoubleClick', function ($timeout, $parse, $interval, $document, DoubleClick) {
     return {
       restrict: 'A',
       template: '<div id="{{adId}}"></div>',
@@ -375,6 +375,8 @@ angular.module('ngDfp', [])
 
           var intervalPromise = null;
           var timeoutPromise = null;
+
+          var pause = false;
 
           DoubleClick.getSlot(id).then(function (slot) {
             var size = slot.getSize();
@@ -417,7 +419,9 @@ angular.module('ngDfp', [])
               }
 
               intervalPromise = $interval(function () {
-                DoubleClick.refreshAds(id);
+                if (!pause) {
+                  DoubleClick.refreshAds(id);
+                }
               }, scope.interval);
             });
 
@@ -438,6 +442,17 @@ angular.module('ngDfp', [])
               $timeout.cancel(timeoutPromise);
               intervalPromise = null;
               timeoutPromise = null;
+            });
+
+            // Pause refresh ads when page visibility is hidden
+            $document.on('visibilitychange', function () {
+              if (scope.interval) {
+                if ($document[0].hidden) {
+                  pause = true;
+                } else {
+                  pause = false;
+                }
+              }
             });
           });
         });
