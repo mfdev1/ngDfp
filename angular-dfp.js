@@ -278,6 +278,17 @@ angular.module('ngDfp', [])
                 if (sizeMapping[id]) {
                   definedSlots[id].defineSizeMapping(sizeMapping[id]);
                 }
+
+                /**
+                 If sent, set the slot specific targeting
+                 */
+                var slotTargeting = slot.getSlotTargeting();
+                if(slotTargeting){
+                  angular.forEach(slotTargeting, function (value, key) {
+                    definedSlots[id].setTargeting(value.id, value.value);
+                  });
+                }
+
               });
             }
 
